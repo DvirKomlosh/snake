@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://bej0vo1iej2y6"]
 
-[ext_resource type="Script" path="res://scripts/Apple.gd" id="1_0x0x0"]
+[ext_resource type="Script" uid="uid://cp7p2m1ayb7sx" path="res://scripts/Apple.gd" id="1_0x0x0"]
 
 [node name="Apple" type="Node2D"]
 script = ExtResource("1_0x0x0")
