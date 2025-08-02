@@ -1,0 +1,18 @@
+[gd_scene load_steps=2 format=3 uid="uid://bej0vo1iej2y6"]
+
+[ext_resource type="Script" path="res://scripts/Apple.gd" id="1_0x0x0"]
+
+[node name="Apple" type="Node2D"]
+script = ExtResource("1_0x0x0")
+
+[node name="Sprite" type="ColorRect" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -10.0
+offset_top = -10.0
+offset_right = 10.0
+offset_bottom = 10.0
+color = Color(1, 0, 0, 1)
