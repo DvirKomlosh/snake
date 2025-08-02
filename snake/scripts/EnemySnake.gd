@@ -48,7 +48,10 @@ func _calculate_best_move() -> Vector2i:
 			if _is_position_safe(new_pos):
 				valid_moves.append(possible_move)
 	
+	if len(valid_moves) == 0:
+		return Vector2i(1, 0)
 	# Pick a random valid move
+	#return Vector2i(0, 1)
 	return valid_moves.pick_random()
 
 func _is_position_safe(pos: Vector2i) -> bool:

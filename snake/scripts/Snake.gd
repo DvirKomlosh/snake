@@ -64,6 +64,7 @@ func move() -> bool:
 	if _is_valid_direction_change(current_direction, requested_direction):
 		current_direction = requested_direction
 	
+	head_position = body_segments[0]
 	var new_head: Vector2i = head_position + current_direction
 
 	body_segments.push_front(new_head)

@@ -3,6 +3,7 @@ extends Snake
 func _ready() -> void:
 	super._ready()
 	set_process_input(true)
+	
 
 func _input(event: InputEvent) -> void:
 	var new_direction: Vector2i
@@ -25,5 +26,14 @@ func _input(event: InputEvent) -> void:
 	if _is_valid_direction_change(current_direction, new_direction):
 		requested_direction = new_direction
 
+func eat_snake_at(position: Vector2i):
+	requested_direction = position - head_position
+	body_segments.push_front(position)
+	head_position = body_segments[0]
+	
+
+func move():
+	super.move()
+	
 func next_move() -> Vector2i:
 	return current_direction 

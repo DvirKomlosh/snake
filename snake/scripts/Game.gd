@@ -10,8 +10,13 @@ var enemy_snake_scene = preload("res://scenes/EnemySnake.tscn")
 # References
 var player_snake: Snake
 var enemy_snakes: Array[Snake] = []
+var eaten_snake: Snake = null
+
+var is_eating: bool = false
+var eating_index: int = -1
 
 var in_loop: bool = false
+
 
 # Node references
 @onready var grid_node: Node2D = $Grid
@@ -21,7 +26,6 @@ var in_loop: bool = false
 @onready var camera: Camera2D = $Camera2D
 @onready var game_over_ui: Control = $UI/GameOver
 @onready var restart_button: Button = $UI/GameOver/PanelContainer/VBoxContainer/RestartButton
-@onready var enemies: Node2D = $Enemies
 
 # Validation
 func _validate_setup() -> bool:
@@ -124,12 +128,25 @@ func _spawn_single_apple() -> void:
 func _on_step_timer_timeout() -> void:
 	if not game_running:
 		return
-	
-	
-	player_snake.move()
+		
+	if is_eating:
+		var eaten_snake_body = eaten_snake.get_body_segments()
+		player_snake.eat_snake_at(eaten_snake_body[len(eaten_snake_body) - eating_index])
+		eating_index += 1
+		
+		if eating_index > len(eaten_snake_body):
+			is_eating = false
+			
+			_kill_enemy_snake(eaten_snake)
+		if game_running:
+			_update_grid()
+		
+		return
 
+	player_snake.move()	
 	for enemy_snake in enemy_snakes:	
 		enemy_snake.move()
+
 
 	# Check for apple collision BEFORE updating grid
 	_check_apple_collision()
@@ -146,10 +163,11 @@ func _on_step_timer_timeout() -> void:
 	
 
 func _update_grid() -> void:
+	player_snake._update_visual_segments()
 	for snake in enemy_snakes:
 		snake._update_visual_segments()
 		
-	player_snake._update_visual_segments()
+	
 
 func _check_collisions():
 	var new_grid: Array = []
@@ -167,9 +185,7 @@ func _check_collisions():
 	for segment in player_snake.get_body_segments().slice(1):
 		new_grid[segment.x][segment.y] = player_snake
 	
-	var player_head = player_snake.get_head_position()
-	if not _is_in_grid(player_head):
-		_game_over()
+
 	
 	for enemy_snake in enemy_snakes:
 		var head = enemy_snake.get_head_position()
@@ -178,31 +194,40 @@ func _check_collisions():
 			continue
 		if new_grid[head.x][head.y] != null:
 			_kill_enemy_snake(enemy_snake)
+			continue
+		new_grid[head.x][head.y] = enemy_snake
 
+	var player_head = player_snake.get_head_position()
 	if not _is_in_grid(player_head):
 		_game_over()
 		return
 		
 	if new_grid[player_head.x][player_head.y] != null:
 		var collided_snake: Snake = new_grid[player_head.x][player_head.y]
-		if not collided_snake in enemy_snakes and collided_snake != player_snake:
+		if (not collided_snake in enemy_snakes) and (collided_snake != player_snake):
 			return # the head is on a snake that was removed already
 		if collided_snake in enemy_snakes:
 			if collided_snake.get_head_position() == player_head:
 				_kill_enemy_snake(collided_snake)
 			elif collided_snake.get_tail_position() == player_head:
 				# should eat the snake somehow
-				_kill_enemy_snake(collided_snake)
+				eat_snake(collided_snake)
+				#_kill_enemy_snake(collided_snake)
 			else:
-			_game_over()
+				_game_over()
 		else:
 			if player_snake.get_tail_position() == player_head:
 				# should eat myself somehow
 				in_loop = true
 			else:
-		_game_over()
+				_game_over()
 		return	
 
+func eat_snake(enemy: Snake):
+	is_eating = true
+	eaten_snake = enemy
+	eating_index = 1
+	
 
 func _kill_enemy_snake(enemy_snake: Snake) -> void:
 		enemy_snake.queue_free()
