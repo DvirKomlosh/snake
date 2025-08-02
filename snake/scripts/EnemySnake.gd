@@ -5,14 +5,18 @@ var game_grid: Array = []
 var player_snake: Snake = null
 var direction_chosen: bool = false
 
+
+
+
 func _ready() -> void:
-	super._ready()
+	head_color = Color.WEB_PURPLE
+	body_color = Color.PURPLE
 	# Start with a random direction
 	current_direction = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)].pick_random()
 	requested_direction = current_direction
 	var head_position: Vector2i = Vector2i(GRID_SIZE_X / 4, GRID_SIZE_Y / 4)
 	set_body_positions(head_position, current_direction)
-
+	
 
 func _process(_delta: float) -> void:
 	if direction_chosen:

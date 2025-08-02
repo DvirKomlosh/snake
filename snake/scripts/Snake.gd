@@ -16,6 +16,10 @@ var body_segments: Array[Vector2i] = []
 var head_position: Vector2i
 var tail_position: Vector2i
 
+var head_color: Color = Color.DARK_GREEN
+var body_color: Color = Color.GREEN
+
+
 # Visual representation
 var body_sprites: Array[ColorRect] = []
 
@@ -42,7 +46,7 @@ func _create_visual_segments() -> void:
 	for i in range(body_segments.size()):
 		var segment: ColorRect = ColorRect.new()
 		segment.size = Vector2(CELL_SIZE, CELL_SIZE)
-		segment.color = Color.GREEN if i == 0 else Color.DARK_GREEN
+		segment.color = head_color if i == 0 else body_color
 		segment.position = Vector2(body_segments[i].x * CELL_SIZE, body_segments[i].y * CELL_SIZE)
 		body_node.add_child(segment)
 		body_sprites.append(segment)
@@ -103,7 +107,7 @@ func _update_visual_segments() -> void:
 	for i in range(body_segments.size()):
 		var segment: ColorRect = ColorRect.new()
 		segment.size = Vector2(CELL_SIZE, CELL_SIZE)
-		segment.color = Color.GREEN if i == 0 else Color.DARK_GREEN
+		segment.color = body_color if i == 0 else head_color
 		segment.position = Vector2(body_segments[i].x * CELL_SIZE, body_segments[i].y * CELL_SIZE)
 		body_node.add_child(segment)
 		body_sprites.append(segment)
