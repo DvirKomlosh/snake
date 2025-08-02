@@ -16,12 +16,12 @@ var body_segments: Array[Vector2i] = []
 var head_position: Vector2i
 var tail_position: Vector2i
 
-var head_color: Color = Color.DARK_GREEN
 var body_color: Color = Color.GREEN
 
+var should_grow: bool = false
 
 # Visual representation
-var body_sprites: Array[ColorRect] = []
+var body_sprites: Array[TextureRect] = []
 
 # Node references
 @onready var body_node: Node2D = $Body
@@ -32,24 +32,12 @@ signal snake_grew
 func _ready() -> void:
 	var center: Vector2i = Vector2i(GRID_SIZE_X / 2, GRID_SIZE_Y / 2)
 	set_body_positions(center, current_direction)
-	_create_visual_segments()
+	_update_visual_segments()
 
 func set_body_positions(new_head_position: Vector2i, direction: Vector2i) -> void:	
 	body_segments = [new_head_position, new_head_position - direction, new_head_position - direction * 2]
 	head_position = body_segments[0]
 	tail_position = body_segments[-1]
-
-func _create_visual_segments() -> void:
-	for sprite in body_sprites:
-		sprite.queue_free()
-	body_sprites.clear()
-	for i in range(body_segments.size()):
-		var segment: ColorRect = ColorRect.new()
-		segment.size = Vector2(CELL_SIZE, CELL_SIZE)
-		segment.color = head_color if i == 0 else body_color
-		segment.position = Vector2(body_segments[i].x * CELL_SIZE, body_segments[i].y * CELL_SIZE)
-		body_node.add_child(segment)
-		body_sprites.append(segment)
 
 func next_move() -> Vector2i:
 	# If we have a buffered move, use it
@@ -68,17 +56,16 @@ func move() -> bool:
 	var new_head: Vector2i = head_position + current_direction
 
 	body_segments.push_front(new_head)
-	body_segments.pop_back()
+	if not should_grow:
+		body_segments.pop_back()
+	should_grow = false
 	head_position = body_segments[0]
 	tail_position = body_segments[-1]
 	snake_moved.emit()
 	return true
 
 func grow() -> void:
-	# Add a new segment at the current tail position
-	body_segments.append(tail_position)
-	# Update tail position to the new last segment
-	tail_position = body_segments[-1]
+	should_grow = true
 	snake_grew.emit()
 
 func _is_valid_direction_change(current: Vector2i, next: Vector2i) -> bool:
@@ -93,19 +80,56 @@ func _check_collision(pos: Vector2i) -> bool:
 			return true
 	return false
 
+func _relative_direction(a: Vector2i, b:Vector2i) -> int:
+	# returns where b is in relation to a
+	# where 0 degrees means b is above a
+	match b - a:
+		Vector2i(0, -1):
+			return 0
+		Vector2i(1, 0):
+			return 90
+		Vector2i(0, 1):
+			return 180
+		Vector2i(-1, 0):
+			return 270
+	push_error("These two blocks aren't next to each other!")
+	assert(false)
+	return -1
+
 func _update_visual_segments() -> void:
 	# Clear all existing sprites
 	for sprite in body_sprites:
+		#print(sprite)
 		sprite.queue_free()
 	body_sprites.clear()
 	
 	# Create new sprites for each segment
 	for i in range(body_segments.size()):
-		var segment: ColorRect = ColorRect.new()
-		segment.size = Vector2(CELL_SIZE, CELL_SIZE)
-		segment.color = body_color if i == 0 else head_color
-		segment.position = Vector2(body_segments[i].x * CELL_SIZE, body_segments[i].y * CELL_SIZE)
+		var segment: TextureRect = TextureRect.new()
+		if i == 0:
+			segment.texture = preload("res://assets/snake_head.png")
+			segment.rotation_degrees = _relative_direction(body_segments[1], body_segments[0])
+		elif i == body_segments.size() - 1:
+			segment.texture = preload("res://assets/snake_tail.png")
+			segment.rotation_degrees = _relative_direction(body_segments[i], body_segments[i-1])
+		else:
+			var forward_direction = _relative_direction(body_segments[i],body_segments[i - 1])
+			var backward_direction = _relative_direction(body_segments[i + 1], body_segments[i])
+			if forward_direction == backward_direction:
+				segment.texture = preload("res://assets/snake_body.png")
+				segment.rotation_degrees = forward_direction
+			else:
+				segment.texture = preload("res://assets/turning_body.png")
+				segment.rotation_degrees = backward_direction
+				if (forward_direction - backward_direction + 360) % 360 == 270:
+					segment.flip_h = true
+		segment.pivot_offset = Vector2(CELL_SIZE / 2, CELL_SIZE / 2)
+		segment.modulate = body_color
 		body_node.add_child(segment)
+		segment.stretch_mode = TextureRect.STRETCH_SCALE
+		segment.set_expand_mode(TextureRect.EXPAND_IGNORE_SIZE)
+		segment.size = Vector2(CELL_SIZE, CELL_SIZE)
+		segment.position = Vector2(body_segments[i].x * CELL_SIZE, body_segments[i].y * CELL_SIZE)
 		body_sprites.append(segment)
 
 func get_head_position() -> Vector2i:

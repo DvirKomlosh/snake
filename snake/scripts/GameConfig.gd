@@ -18,7 +18,6 @@ const INITIAL_SNAKE_LENGTH = 3
 
 # Colors
 const GRID_COLOR = Color(0.2, 0.2, 0.2, 0.3)
-const SNAKE_HEAD_COLOR = Color.GREEN
 const SNAKE_BODY_COLOR = Color.DARK_GREEN
 const APPLE_COLOR = Color.RED
 
