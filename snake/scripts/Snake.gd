@@ -53,17 +53,13 @@ func move() -> bool:
 		current_direction = requested_direction
 	
 	var new_head: Vector2i = head_position + current_direction
-	
-	if _check_collision(new_head):
-		return false
-		
+
 	body_segments.push_front(new_head)
 	if not should_grow:
 		body_segments.pop_back()
 	should_grow = false
 	head_position = body_segments[0]
 	tail_position = body_segments[-1]
-	_update_visual_segments()
 	snake_moved.emit()
 	return true
 

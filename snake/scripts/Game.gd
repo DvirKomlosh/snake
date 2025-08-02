@@ -8,8 +8,8 @@ var apple_scene = preload("res://scenes/Apple.tscn")
 var enemy_snake_scene = preload("res://scenes/EnemySnake.tscn")
 
 # References
-var player_snake: Node2D
-var enemy_snake: Node2D
+var player_snake: Snake
+var enemy_snakes: Array[Snake] = []
 
 # Node references
 @onready var grid_node: Node2D = $Grid
@@ -87,7 +87,8 @@ func _spawn_player_snake() -> void:
 	_update_grid_with_snake()
 
 func _spawn_enemy_snake() -> void:
-	enemy_snake = enemy_snake_scene.instantiate()
+	var enemy_snake = enemy_snake_scene.instantiate()
+	enemy_snakes.append(enemy_snake)
 	snake_node.add_child(enemy_snake)
 	
 	# Set game references for AI
@@ -122,29 +123,85 @@ func _on_step_timer_timeout() -> void:
 	if not game_running:
 		return
 	
-	# Move the player snake
-	if not player_snake.move():
-		_game_over()
-		return
 	
-	# Move the enemy snake
-	if enemy_snake and not enemy_snake.move():
-		# Enemy snake died, respawn it
-		enemy_snake.queue_free()
-		_spawn_enemy_snake()
-	
+	player_snake.move()
+
+	for enemy_snake in enemy_snakes:	
+		enemy_snake.move()
+
 	# Check for apple collision BEFORE updating grid
 	_check_apple_collision()
 	
-	# Update grid with new snake positions
-	_update_grid_with_snake()
-	
+	_check_collisions()
+	if game_running:
+		_update_grid()
+
+		_update_grid_with_snake()
+
 	# Ensure we have the required number of apples
 	while apples.size() < GameConfig.APPLE_COUNT:
 		_spawn_single_apple()
 	
-	# Print positions for debugging
-	#_print_positions()
+
+func _update_grid() -> void:
+	for snake in enemy_snakes:
+		snake._update_visual_segments()
+		
+	player_snake._update_visual_segments()
+
+func _check_collisions():
+	var new_grid: Array = []
+	for i in range(GameConfig.GRID_SIZE_X):
+		var row: Array[Snake] = []
+		for j in range(GameConfig.GRID_SIZE_Y):
+			row.append(null)
+		new_grid.append(row)
+
+	# placing body segments:
+	for enemy_snake in enemy_snakes:
+		for segment in enemy_snake.get_body_segments().slice(1):
+			new_grid[segment.x][segment.y] = enemy_snake
+	
+	for segment in player_snake.get_body_segments().slice(1):
+		new_grid[segment.x][segment.y] = player_snake
+	
+	var player_head = player_snake.get_head_position()
+	if not _is_in_grid(player_head):
+		_game_over()
+	
+	for enemy_snake in enemy_snakes:
+		var head = enemy_snake.get_head_position()
+		if not _is_in_grid(head):
+			_kill_enemy_snake(enemy_snake)
+			continue
+		if new_grid[head.x][head.y] != null:
+			_kill_enemy_snake(enemy_snake)
+
+	if not _is_in_grid(player_head):
+		_game_over()
+		return
+		
+	var grid_head_position = new_grid[player_head.x][player_head.y]
+	if grid_head_position != null:
+		if not grid_head_position in enemy_snakes and grid_head_position != player_snake:
+			return # the head is on a snake that was removed already
+		if grid_head_position.get_head_position() == player_head:
+			_kill_enemy_snake(grid_head_position)
+		if grid_head_position.get_tail_position() == player_head:
+			## eating tail, for now, game over
+			_game_over()
+			return
+		_game_over()
+		return	
+
+
+func _kill_enemy_snake(enemy_snake: Snake) -> void:
+		enemy_snake.queue_free()
+		enemy_snakes.erase(enemy_snake)
+		_spawn_enemy_snake()  # Respawn a new enemy snake
+
+func _is_in_grid(pos: Vector2i) -> bool:
+	return pos.x >= 0 and pos.x < GameConfig.GRID_SIZE_X and pos.y >= 0 and pos.y < GameConfig.GRID_SIZE_Y
 
 func _update_grid_with_snake() -> void:
 	# Clear previous snake positions
@@ -159,37 +216,42 @@ func _update_grid_with_snake() -> void:
 		grid[segment.x][segment.y] = 1
 	
 	# Mark enemy snake positions
-	if enemy_snake:
+	for enemy_snake in enemy_snakes:
 		var enemy_segments: Array = enemy_snake.get_body_segments()
 		for segment in enemy_segments:
 			grid[segment.x][segment.y] = 1
 
 func _check_apple_collision() -> void:
-	var head_pos: Vector2i = player_snake.get_head_position()
-	
-	# Check if head is on an apple
-	if grid[head_pos.x][head_pos.y] == 2:
-		# Remove apple from grid and list
-		grid[head_pos.x][head_pos.y] = 1
-		apples.erase(head_pos)
+	var snakes = [player_snake] + enemy_snakes
+	for snake in snakes:
+		var head_pos: Vector2i = snake.get_head_position()
 		
-		# Remove visual apple - find by grid position
-		for apple in apples_node.get_children():
-			var apple_grid_pos = Vector2i((apple.position.x - GameConfig.CELL_SIZE / 2) / GameConfig.CELL_SIZE, (apple.position.y - GameConfig.CELL_SIZE / 2) / GameConfig.CELL_SIZE)
-			if apple_grid_pos == head_pos:
-				apple.queue_free()
-				break
+		if head_pos.x < 0 or head_pos.x >= GameConfig.GRID_SIZE_X or head_pos.y < 0 or head_pos.y >= GameConfig.GRID_SIZE_Y:
+			return  # Out of bounds, no apple collision
+
+		# Check if head is on an apple
+		if grid[head_pos.x][head_pos.y] == 2:
+			# Remove apple from grid and list
+			grid[head_pos.x][head_pos.y] = 1
+			apples.erase(head_pos)
+			
+			# Remove visual apple - find by grid position
+			for apple in apples_node.get_children():
+				var apple_grid_pos = Vector2i((apple.position.x - GameConfig.CELL_SIZE / 2) / GameConfig.CELL_SIZE, (apple.position.y - GameConfig.CELL_SIZE / 2) / GameConfig.CELL_SIZE)
+				if apple_grid_pos == head_pos:
+					apple.queue_free()
+					break
+			
+			# Grow snake
+			snake.grow()
 		
-		# Grow snake
-		player_snake.grow()
-		
-		# Update grid with new tail
-		_update_grid_with_snake()
+
 
 func _game_over() -> void:
 	game_running = false
 	step_timer.stop()
 	game_over_ui.visible = true
+	get_tree().paused = true
 
 func _center_camera() -> void:
 	var grid_center = Vector2(GameConfig.GRID_SIZE_X * GameConfig.CELL_SIZE / 2, GameConfig.GRID_SIZE_Y * GameConfig.CELL_SIZE / 2)
@@ -209,4 +271,5 @@ func _print_positions() -> void:
 
 func _on_restart_button_pressed() -> void:
 	# Reload the scene
-	get_tree().reload_current_scene() 
+	get_tree().paused = false
+	get_tree().reload_current_scene()
