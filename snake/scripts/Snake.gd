@@ -122,4 +122,20 @@ func set_requested_direction(direction: Vector2i) -> void:
 func buffer_move(direction: Vector2i) -> void:
 	# Only buffer if we have space and the move is valid
 	if move_buffer.size() < 1 and _is_valid_direction_change(current_direction, direction):
-		move_buffer.append(direction) 
+		move_buffer.append(direction)
+
+func fold_corner(inner_point: Vector2i, corner_index: int, corner_length: int) -> void:
+	# "folds" a corner, meaning turning corners inside to slowly fill the inner region
+	var new_body_segments = body_segments.slice(0, corner_index + 1)
+	new_body_segments.append(inner_point)
+	new_body_segments += body_segments.slice(corner_index + corner_length)
+	#body_segments = body_segments.slice(1)
+	body_segments = new_body_segments
+
+
+func delete_corner() -> void:
+	# deletes part of the snake where the snake does a u turn
+	for i in range(len(body_segments) - 4):
+		if body_segments[i].distance_squared_to(body_segments[i + 3]) == 1:
+			body_segments = body_segments.slice(0, i + 1) + body_segments.slice(i + 3)
+			return

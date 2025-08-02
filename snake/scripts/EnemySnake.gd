@@ -69,7 +69,7 @@ func _is_position_safe(pos: Vector2i) -> bool:
 	
 	# Check if position is occupied by apple (avoid apples)
 	if game_grid.size() > 0 and pos.x < game_grid.size() and pos.y < game_grid[0].size():
-		if game_grid[pos.x][pos.y] == 2:  # Apple
+		if game_grid[pos.x][pos.y] == GameConfig.GRID_CONTENTS.APPLE:  # Apple
 			return false
 	
 	return true 

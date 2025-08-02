@@ -24,3 +24,7 @@ const APPLE_COLOR = Color.RED
 
 # UI
 const GAME_OVER_BG_COLOR = Color(0, 0, 0, 0.5) 
+
+# Useful constants
+const DIRECTIONS: Array[Vector2i] = [Vector2i(-1, 0), Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1)]
+enum GRID_CONTENTS {EMPTY, PLAYER_SNAKE, ENEMY_SNAKE, APPLE}

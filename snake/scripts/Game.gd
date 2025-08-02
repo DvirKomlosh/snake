@@ -23,6 +23,18 @@ var in_loop: bool = false
 @onready var restart_button: Button = $UI/GameOver/PanelContainer/VBoxContainer/RestartButton
 @onready var enemies: Node2D = $Enemies
 
+var GRID_CONTENTS = GameConfig.GRID_CONTENTS
+
+func _create_array(x: int, y: int, value) -> Array[Array]:
+	var res: Array[Array] = []
+	for i in range(x):
+		var row: Array = []
+		for j in range(y):
+			row.append(value)
+		res.append(row)
+	
+	return res
+
 # Validation
 func _validate_setup() -> bool:
 	if not grid_node or not snake_node or not apples_node:
@@ -61,13 +73,8 @@ func _ready() -> void:
 
 
 func _initialize_grid() -> void:
-	grid.resize(GameConfig.GRID_SIZE_X)
-	for i in range(GameConfig.GRID_SIZE_X):
-		grid[i] = []
-		grid[i].resize(GameConfig.GRID_SIZE_Y)
-		for j in range(GameConfig.GRID_SIZE_Y):
-			grid[i][j] = 0  # 0 = empty, 1 = snake, 2 = apple
-	
+	grid = _create_array(GameConfig.GRID_SIZE_X, GameConfig.GRID_SIZE_Y, GRID_CONTENTS.EMPTY)
+
 	# Create visual grid
 	_create_grid_visual()
 
@@ -107,13 +114,13 @@ func _spawn_single_apple() -> void:
 	# Find an empty position
 	while attempts < GameConfig.APPLE_SPAWN_ATTEMPTS:
 		apple_pos = Vector2i(randi() % GameConfig.GRID_SIZE_X, randi() % GameConfig.GRID_SIZE_Y)
-		if grid[apple_pos.x][apple_pos.y] == 0:
+		if grid[apple_pos.x][apple_pos.y] == GRID_CONTENTS.EMPTY:
 			break
 		attempts += 1
 	
 	if attempts < GameConfig.APPLE_SPAWN_ATTEMPTS:
 		# Place apple on grid
-		grid[apple_pos.x][apple_pos.y] = 2
+		grid[apple_pos.x][apple_pos.y] = GRID_CONTENTS.APPLE
 		apples.append(apple_pos)
 		
 		# Create visual apple
@@ -121,10 +128,70 @@ func _spawn_single_apple() -> void:
 		apple.position = Vector2(apple_pos.x * GameConfig.CELL_SIZE + GameConfig.CELL_SIZE / 2, apple_pos.y * GameConfig.CELL_SIZE + GameConfig.CELL_SIZE / 2)
 		apples_node.add_child(apple)
 
+func calculate_inner_parts(current_position: Vector2i, visit_grid: Array[Array]) -> void:
+	if not _is_in_grid(current_position):
+		return
+	if grid[current_position.x][current_position.y] == GRID_CONTENTS.PLAYER_SNAKE:
+		return
+	if visit_grid[current_position.x][current_position.y]:
+		return
+	visit_grid[current_position.x][current_position.y] = true
+	for step_direction in GameConfig.DIRECTIONS:
+		calculate_inner_parts(current_position + step_direction, visit_grid)
+
+
+func _loop() -> void:
+	var visit_grid: Array[Array] = _create_array(GameConfig.GRID_SIZE_X, GameConfig.GRID_SIZE_Y, false)
+
+	for x in range(GameConfig.GRID_SIZE_X):
+		calculate_inner_parts(Vector2i(x, 0), visit_grid)
+		calculate_inner_parts(Vector2i(x, GameConfig.GRID_SIZE_Y - 1), visit_grid)
+
+	for y in range(GameConfig.GRID_SIZE_Y):
+		calculate_inner_parts(Vector2i(0, y), visit_grid)
+		calculate_inner_parts(Vector2i(GameConfig.GRID_SIZE_X - 1, y), visit_grid)
+
+	var inner_points: Array[Vector2i] = []
+	for x in range(GameConfig.GRID_SIZE_X):
+		for y in range(GameConfig.GRID_SIZE_Y):
+			if not visit_grid[x][y] and grid[x][y] != GRID_CONTENTS.PLAYER_SNAKE:
+				inner_points.append(Vector2i(x, y))
+
+	var possible_corners: Array[Array] = []
+
+	for inner_point in inner_points:
+		var current_streak = 0
+		for i in range(len(player_snake.body_segments)):
+			var dist = inner_point.distance_squared_to(player_snake.body_segments[i])
+			if dist == 1:
+				if current_streak == 0:
+					current_streak += 1
+				else:
+					possible_corners.append([inner_point, i - current_streak, current_streak])
+					break
+			elif dist < 4 and current_streak > 0:
+				current_streak += 1
+			else:
+				current_streak = 0
+
+	if len(possible_corners):
+		var folded_corner = possible_corners.pick_random()
+		player_snake.fold_corner(folded_corner[0], folded_corner[1], folded_corner[2])
+	else:
+		player_snake.delete_corner()
+
+
 func _on_step_timer_timeout() -> void:
 	if not game_running:
 		return
 	
+	if in_loop:
+		_update_grid()
+		_update_grid_with_snake()
+		_loop()
+		if len(player_snake.body_segments) <= 4:
+			in_loop = false
+		return
 	
 	player_snake.move()
 
@@ -151,7 +218,7 @@ func _update_grid() -> void:
 		
 	player_snake._update_visual_segments()
 
-func _check_collisions():
+func _check_collisions() -> void:
 	var new_grid: Array = []
 	for i in range(GameConfig.GRID_SIZE_X):
 		var row: Array[Snake] = []
@@ -182,7 +249,7 @@ func _check_collisions():
 	if not _is_in_grid(player_head):
 		_game_over()
 		return
-		
+
 	if new_grid[player_head.x][player_head.y] != null:
 		var collided_snake: Snake = new_grid[player_head.x][player_head.y]
 		if not collided_snake in enemy_snakes and collided_snake != player_snake:
@@ -194,13 +261,13 @@ func _check_collisions():
 				# should eat the snake somehow
 				_kill_enemy_snake(collided_snake)
 			else:
-			_game_over()
+				_game_over()
 		else:
 			if player_snake.get_tail_position() == player_head:
 				# should eat myself somehow
 				in_loop = true
 			else:
-		_game_over()
+				_game_over()
 		return	
 
 
@@ -216,19 +283,19 @@ func _update_grid_with_snake() -> void:
 	# Clear previous snake positions
 	for i in range(GameConfig.GRID_SIZE_X):
 		for j in range(GameConfig.GRID_SIZE_Y):
-			if grid[i][j] == 1:
-				grid[i][j] = 0
+			if grid[i][j] in [GRID_CONTENTS.ENEMY_SNAKE, GRID_CONTENTS.PLAYER_SNAKE]:
+				grid[i][j] = GRID_CONTENTS.EMPTY
 	
 	# Mark player snake positions
 	var body_segments: Array = player_snake.get_body_segments()
 	for segment in body_segments:
-		grid[segment.x][segment.y] = 1
+		grid[segment.x][segment.y] = GRID_CONTENTS.PLAYER_SNAKE
 	
 	# Mark enemy snake positions
 	for enemy_snake in enemy_snakes:
 		var enemy_segments: Array = enemy_snake.get_body_segments()
 		for segment in enemy_segments:
-			grid[segment.x][segment.y] = 1
+			grid[segment.x][segment.y] = GRID_CONTENTS.ENEMY_SNAKE
 
 func _check_apple_collision() -> void:
 	var snakes = [player_snake] + enemy_snakes
@@ -239,9 +306,12 @@ func _check_apple_collision() -> void:
 			return  # Out of bounds, no apple collision
 
 		# Check if head is on an apple
-		if grid[head_pos.x][head_pos.y] == 2:
+		if grid[head_pos.x][head_pos.y] == GRID_CONTENTS.APPLE:
 			# Remove apple from grid and list
-			grid[head_pos.x][head_pos.y] = 1
+			if snake == player_snake:
+				grid[head_pos.x][head_pos.y] = GRID_CONTENTS.PLAYER_SNAKE
+			else:
+				grid[head_pos.x][head_pos.y] = GRID_CONTENTS.ENEMY_SNAKE
 			apples.erase(head_pos)
 			
 			# Remove visual apple - find by grid position
