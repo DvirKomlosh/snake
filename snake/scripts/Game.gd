@@ -11,6 +11,8 @@ var enemy_snake_scene = preload("res://scenes/EnemySnake.tscn")
 var player_snake: Snake
 var enemy_snakes: Array[Snake] = []
 
+var in_loop: bool = false
+
 # Node references
 @onready var grid_node: Node2D = $Grid
 @onready var snake_node: Node2D = $Snakes
@@ -181,16 +183,23 @@ func _check_collisions():
 		_game_over()
 		return
 		
-	var grid_head_position = new_grid[player_head.x][player_head.y]
-	if grid_head_position != null:
-		if not grid_head_position in enemy_snakes and grid_head_position != player_snake:
+	if new_grid[player_head.x][player_head.y] != null:
+		var collided_snake: Snake = new_grid[player_head.x][player_head.y]
+		if not collided_snake in enemy_snakes and collided_snake != player_snake:
 			return # the head is on a snake that was removed already
-		if grid_head_position.get_head_position() == player_head:
-			_kill_enemy_snake(grid_head_position)
-		if grid_head_position.get_tail_position() == player_head:
-			## eating tail, for now, game over
+		if collided_snake in enemy_snakes:
+			if collided_snake.get_head_position() == player_head:
+				_kill_enemy_snake(collided_snake)
+			elif collided_snake.get_tail_position() == player_head:
+				# should eat the snake somehow
+				_kill_enemy_snake(collided_snake)
+			else:
 			_game_over()
-			return
+		else:
+			if player_snake.get_tail_position() == player_head:
+				# should eat myself somehow
+				in_loop = true
+			else:
 		_game_over()
 		return	
 
@@ -226,7 +235,7 @@ func _check_apple_collision() -> void:
 	for snake in snakes:
 		var head_pos: Vector2i = snake.get_head_position()
 		
-		if head_pos.x < 0 or head_pos.x >= GameConfig.GRID_SIZE_X or head_pos.y < 0 or head_pos.y >= GameConfig.GRID_SIZE_Y:
+		if not _is_in_grid(head_pos):
 			return  # Out of bounds, no apple collision
 
 		# Check if head is on an apple
