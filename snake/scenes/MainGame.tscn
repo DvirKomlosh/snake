@@ -19,6 +19,7 @@ wait_time = 0.2
 [node name="UI" type="CanvasLayer" parent="."]
 
 [node name="GameOver" type="Control" parent="UI"]
+process_mode = 3
 visible = false
 layout_mode = 3
 anchors_preset = 8

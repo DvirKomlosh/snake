@@ -14,13 +14,13 @@ func _ready() -> void:
 	# Start with a random direction
 	current_direction = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)].pick_random()
 	requested_direction = current_direction
-	var head_position: Vector2i = Vector2i(GRID_SIZE_X / 4, GRID_SIZE_Y / 4)
-	set_body_positions(head_position, current_direction)
-	
+	var new_head_position: Vector2i = Vector2i(GRID_SIZE_X / 4, GRID_SIZE_Y / 4)
+	set_body_positions(new_head_position, current_direction)
+	 
 
 func _process(_delta: float) -> void:
 	if direction_chosen:
-		return
+		return	
 	requested_direction = next_move()
 	direction_chosen = true
 	
