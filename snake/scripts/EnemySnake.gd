@@ -9,7 +9,6 @@ var direction_chosen: bool = false
 
 
 func _ready() -> void:
-	head_color = Color.WEB_PURPLE
 	body_color = Color.PURPLE
 	# Start with a random direction
 	current_direction = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)].pick_random()

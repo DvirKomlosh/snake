@@ -16,7 +16,6 @@ var body_segments: Array[Vector2i] = []
 var head_position: Vector2i
 var tail_position: Vector2i
 
-var head_color: Color = Color.DARK_GREEN
 var body_color: Color = Color.GREEN
 
 var should_grow: bool = false
@@ -128,6 +127,7 @@ func _update_visual_segments() -> void:
 				if (forward_direction - backward_direction + 360) % 360 == 270:
 					segment.flip_h = true
 		segment.pivot_offset = Vector2(CELL_SIZE / 2, CELL_SIZE / 2)
+		segment.modulate = body_color
 		body_node.add_child(segment)
 		segment.stretch_mode = TextureRect.STRETCH_SCALE
 		segment.set_expand_mode(TextureRect.EXPAND_IGNORE_SIZE)
